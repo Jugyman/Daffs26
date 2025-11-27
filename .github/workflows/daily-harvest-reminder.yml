@@ -1,0 +1,36 @@
+name: Daily harvest reminder
+
+on:
+  schedule:
+    # Every day at 18:00 UTC
+    - cron: "0 18 * * *"
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch: {}
+
+jobs:
+  call-edge-function:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Supabase edge function
+        env:
+          SUPABASE_EDGE_URL: ${{ secrets.SUPABASE_EDGE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Calling edge function at $SUPABASE_EDGE_URL"
+
+          RESPONSE=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            -X POST "$SUPABASE_EDGE_URL" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+
+          echo "HTTP status: $RESPONSE"
+          echo "Response body:"
+          cat /tmp/response.json
+
+          if [ "$RESPONSE" -ge 400 ]; then
+            echo "Request failed"
+            exit 1
+          fi
